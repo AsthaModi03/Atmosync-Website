@@ -1,5 +1,5 @@
 from kafka import KafkaProducer
-import pandas as pd
+from simulator import generate_sensor_data
 import json 
 import time
 
@@ -8,13 +8,11 @@ producer = KafkaProducer(
     value_serializer=lambda v:
     json.dumps(v).encode('utf-8')
 )
+ 
+while True:
+    data = generate_sensor_data()
 
-df = pd.read_csv("Data/processed/sensor_data.csv")
-
-for _, row in df.iterrows():
-    producer.send("sensor_data",row.to_dict())
-    print(row.to_dict())
-    time.sleep(1)
-
-producer.flush()
-print("Data streaming completed!")
+    producer.send("sensor_data",data)
+    producer.flush()
+    print(data)
+    time.sleep(2)
