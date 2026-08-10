@@ -20,28 +20,46 @@ cursor.execute("SELECT CURRENT_VERSION();")
 print(cursor.fetchone())
 consumer = KafkaConsumer(
     "sensor_data",
-
-bootstrap_servers="localhost:9092",
-     value_deserializer=lambda m:
-json.loads(m.decode("utf-8")),
-     auto_offset_reset="earliest"
+    bootstrap_servers="localhost:9092",
+    value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+    auto_offset_reset="earliest",
+    group_id="atmosync-consumer-test",
+    enable_auto_commit=True
 )
 
 print("Waiting for messages...\n")
 
 for message in consumer:
-    data=message.value 
-    cursor.execute(""" INSERT INTO RAW_SENSOR_DATA_LIVE (TIMESTAMP,CONTAINER_ID,COMMODITY_TYPE,TEMPERATURE_C,HUMIDITY_PCT,GPS_LAT,READING_ID,ANOMALY)
-    VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",(
-     data["timestamp"],
-     data["container_id"],
-     data["commodity_type"],
-     data["temperature_c"],
-     data["humidity_pct"],
-     data["gps_lat"],
-     data["reading_id"],
-     data["anomaly"]    
-))
+    data = message.value
 
-conn.commit()
-print("Inserted:",data)
+    print("Received:", data)
+
+    cursor.execute("""
+        INSERT INTO RAW_SENSOR_DATA_LIVE
+        (
+            TIMESTAMP,
+            CONTAINER_ID,
+            COMMODITY_TYPE,
+            TEMPERATURE_C,
+            HUMIDITY_PCT,
+            GPS_LAT,
+            GPS_LON,
+            READING_ID,
+            ANOMALY
+        )
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (
+        data["timestamp"],
+        data["container_id"],
+        data["commodity_type"],
+        data["temperature_c"],
+        data["humidity_pct"],
+        data["gps_lat"],
+        data["gps_lon"],
+        data["reading_id"],
+        data["anomaly"]
+    ))
+
+    conn.commit()
+
+    print("Inserted:", data)
